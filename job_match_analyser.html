@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Job Match Analyser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f8f9fb;
+      --white:     #ffffff;
+      --ink:       #0f172a;
+      --muted:     #64748b;
+      --border:    #e2e8f0;
+      --accent:    #6366f1;
+      --accent-lt: #eef2ff;
+      --green:     #10b981;
+      --green-lt:  #ecfdf5;
+      --amber:     #f59e0b;
+      --amber-lt:  #fffbeb;
+      --red:       #ef4444;
+      --red-lt:    #fef2f2;
+      --shadow:    0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      max-width: 860px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding-left: 48px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 1.6rem;
+      margin-bottom: 1.2rem;
+      max-width: 860px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .card-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+    }
+
+    /* ── INPUTS ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 0.4rem;
+    }
+
+    .field label span {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.83rem;
+      line-height: 1.6;
+      outline: none;
+      padding: 0.75rem;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
+
+    /* ── BUTTON ── */
+    .btn-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      align-items: center;
+      background: var(--accent);
+      border: none;
+      border-radius: 9px;
+      color: white;
+      cursor: pointer;
+      display: inline-flex;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      gap: 0.5rem;
+      padding: 0.7rem 1.6rem;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── LOADING ── */
+    .loading {
+      display: none;
+      align-items: center;
+      gap: 0.8rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 1.5rem 0 0.5rem;
+      justify-content: center;
+    }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESULTS ── */
+    #results { display: none; }
+
+    /* Score ring */
+    .score-section {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .score-ring {
+      position: relative;
+      width: 110px; height: 110px;
+      flex-shrink: 0;
+    }
+
+    .score-ring svg { transform: rotate(-90deg); }
+
+    .score-ring .track { fill: none; stroke: var(--border); stroke-width: 10; }
+    .score-ring .fill  { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+    .score-num {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .score-num .n {
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .score-num .pct {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .score-meta { flex: 1; }
+
+    .score-meta h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+
+    .score-meta p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Verdict pill */
+    .verdict {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-top: 0.6rem;
+      padding: 0.25rem 0.85rem;
+    }
+
+    .verdict.strong  { background: var(--green-lt); color: var(--green); }
+    .verdict.good    { background: var(--accent-lt); color: var(--accent); }
+    .verdict.partial { background: var(--amber-lt);  color: var(--amber); }
+    .verdict.weak    { background: var(--red-lt);    color: var(--red); }
+
+    /* Sections */
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-top: 1.2rem;
+    }
+
+    .result-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem;
+    }
+
+    .result-block h3 {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .tag {
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.2rem 0.6rem;
+    }
+
+    .tag.match   { background: var(--green-lt); color: var(--green); }
+    .tag.missing { background: var(--red-lt);   color: var(--red); }
+    .tag.nice    { background: var(--amber-lt);  color: var(--amber); }
+
+    /* Suggestions list */
+    .suggestion-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .suggestion {
+      display: flex;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    .suggestion::before {
+      content: '→';
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Cover letter box */
+    .cover-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      font-size: 0.87rem;
+      line-height: 1.75;
+      padding: 1.1rem 1.3rem;
+      white-space: pre-wrap;
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.7rem; right: 0.7rem;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.65rem;
+      transition: color 0.2s;
+    }
+
+    .copy-btn:hover { color: var(--accent); }
+
+    /* Error */
+    .error-box {
+      background: var(--red-lt);
+      border: 1px solid #fca5a5;
+      border-radius: 10px;
+      color: var(--red);
+      font-size: 0.88rem;
+      padding: 1rem 1.2rem;
+    }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.2rem 0;
+    }
+
+    @media (max-width: 600px) {
+      .two-col, .result-grid { grid-template-columns: 1fr; }
+      .score-section { flex-direction: column; gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo">🎯</div>
+    <h1>Job Match Analyser</h1>
+  </div>
+  <p class="subtitle">Paste a job description and your CV — AI analyses how well you match and suggests improvements.</p>
+</div>
+
+<!-- INPUT CARD -->
+<div class="card">
+  <div class="card-title">Your Details</div>
+  <div class="two-col">
+    <div class="field">
+      <label>Job Description <span>(paste the full listing)</span></label>
+      <textarea id="jobDesc" rows="14" placeholder="Paste the job description here…"></textarea>
+    </div>
+    <div class="field">
+      <label>Your CV <span>(paste as plain text)</span></label>
+      <textarea id="cvText" rows="14" placeholder="Paste your CV content here…"></textarea>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn" id="analyseBtn" onclick="analyse()">
+      <span>✦</span> Analyse Match
+    </button>
+  </div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span id="loadingMsg">AI is reading your CV and the job description…</span>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results">
+  <div class="card" id="scoreCard"></div>
+  <div class="card" id="keywordsCard"></div>
+  <div class="card" id="coverCard"></div>
+</div>
+
+<script>
+const loadingMessages = [
+  "AI is reading your CV and the job description…",
+  "Comparing your skills against requirements…",
+  "Identifying keyword gaps…",
+  "Drafting cover letter suggestions…",
+  "Almost done…"
+];
+
+let msgIdx = 0;
+let msgInterval = null;
+
+function startLoadingMessages() {
+  msgIdx = 0;
+  document.getElementById("loadingMsg").textContent = loadingMessages[0];
+  msgInterval = setInterval(() => {
+    msgIdx = Math.min(msgIdx + 1, loadingMessages.length - 1);
+    document.getElementById("loadingMsg").textContent = loadingMessages[msgIdx];
+  }, 3000);
+}
+
+function stopLoadingMessages() {
+  clearInterval(msgInterval);
+}
+
+async function analyse() {
+  const jobDesc = document.getElementById("jobDesc").value.trim();
+  const cvText  = document.getElementById("cvText").value.trim();
+
+  if (!jobDesc || !cvText) {
+    alert("Please paste both a job description and your CV.");
+    return;
+  }
+
+  const btn = document.getElementById("analyseBtn");
+  const loading = document.getElementById("loading");
+  const results = document.getElementById("results");
+
+  btn.disabled = true;
+  loading.style.display = "flex";
+  results.style.display = "none";
+  startLoadingMessages();
+
+  const prompt = `You are a professional career advisor and recruitment specialist. Analyse the match between this CV and job description.
+
+JOB DESCRIPTION:
+${jobDesc}
+
+CV:
+${cvText}
+
+Respond ONLY with a valid JSON object — no markdown, no backticks, no explanation outside the JSON. Use this exact structure:
+
+{
+  "score": <integer 0-100>,
+  "verdict": "<one of: strong_match | good_match | partial_match | weak_match>",
+  "verdict_label": "<short human-readable label e.g. 'Strong Match' or 'Partial Match'>",
+  "summary": "<2-3 sentences explaining the overall match honestly>",
+  "matched_keywords": ["<keyword>", ...],
+  "missing_keywords": ["<keyword>", ...],
+  "nice_to_have_missing": ["<keyword>", ...],
+  "cv_suggestions": ["<actionable suggestion to improve the CV for this role>", ...],
+  "cover_letter_opening": "<A strong 3-4 paragraph opening cover letter tailored to this specific job and CV. Make it personal, honest, and specific — not generic.>"
+}
+
+Be honest. If the match is weak, say so. Matched and missing keywords should be specific skills, tools, or qualifications mentioned in the job description.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const raw = data.content?.[0]?.text || "";
+
+    // Strip any accidental markdown fences
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const result = JSON.parse(clean);
+
+    stopLoadingMessages();
+    loading.style.display = "none";
+    btn.disabled = false;
+    renderResults(result);
+
+  } catch (err) {
+    stopLoadingMessages();
+    loading.style.display = "none";
+    btn.disabled = false;
+    document.getElementById("results").style.display = "block";
+    document.getElementById("scoreCard").innerHTML = `
+      <div class="error-box">
+        ❌ Something went wrong: ${err.message}<br>
+        <small>Make sure you're running this via the Claude artifact viewer or a server that proxies the API.</small>
+      </div>`;
+  }
+}
+
+function renderResults(r) {
+  const results = document.getElementById("results");
+  results.style.display = "block";
+
+  // ── SCORE CARD ──
+  const verdictClass = {
+    strong_match: "strong",
+    good_match:   "good",
+    partial_match:"partial",
+    weak_match:   "weak"
+  }[r.verdict] || "partial";
+
+  const verdictIcon = {
+    strong_match: "🟢",
+    good_match:   "🔵",
+    partial_match:"🟡",
+    weak_match:   "🔴"
+  }[r.verdict] || "🟡";
+
+  // Score ring colour
+  const ringColor = r.score >= 75 ? "#10b981"
+                  : r.score >= 50 ? "#6366f1"
+                  : r.score >= 30 ? "#f59e0b"
+                  : "#ef4444";
+
+  const circumference = 2 * Math.PI * 45; // r=45
+  const offset = circumference * (1 - r.score / 100);
+
+  document.getElementById("scoreCard").innerHTML = `
+    <div class="card-title">Match Analysis</div>
+    <div class="score-section">
+      <div class="score-ring">
+        <svg viewBox="0 0 100 100" width="110" height="110">
+          <circle class="track" cx="50" cy="50" r="45"/>
+          <circle class="fill" cx="50" cy="50" r="45"
+            stroke="${ringColor}"
+            stroke-dasharray="${circumference}"
+            stroke-dashoffset="${offset}"
+            id="scoreArc"/>
+        </svg>
+        <div class="score-num">
+          <span class="n" style="color:${ringColor}">${r.score}</span>
+          <span class="pct">/ 100</span>
+        </div>
+      </div>
+      <div class="score-meta">
+        <h2>${r.verdict_label}</h2>
+        <p>${r.summary}</p>
+        <div class="verdict ${verdictClass}">${verdictIcon} ${r.verdict_label}</div>
+      </div>
+    </div>
+  `;
+
+  // ── KEYWORDS + SUGGESTIONS ──
+  const matchedTags  = (r.matched_keywords || []).map(k => `<span class="tag match">${k}</span>`).join("") || "<span style='color:var(--muted);font-size:0.83rem'>None found</span>";
+  const missingTags  = (r.missing_keywords || []).map(k => `<span class="tag missing">${k}</span>`).join("") || "<span style='color:var(--muted);font-size:0.83rem'>None — great!</span>";
+  const niceTags     = (r.nice_to_have_missing || []).map(k => `<span class="tag nice">${k}</span>`).join("") || "<span style='color:var(--muted);font-size:0.83rem'>None</span>";
+  const suggestions  = (r.cv_suggestions || []).map(s => `<div class="suggestion">${s}</div>`).join("");
+
+  document.getElementById("keywordsCard").innerHTML = `
+    <div class="card-title">Skills & Keywords</div>
+    <div class="result-grid">
+      <div class="result-block">
+        <h3>✅ You Have</h3>
+        <div class="tag-list">${matchedTags}</div>
+      </div>
+      <div class="result-block">
+        <h3>❌ Missing (Required)</h3>
+        <div class="tag-list">${missingTags}</div>
+      </div>
+      <div class="result-block">
+        <h3>🟡 Nice to Have (Missing)</h3>
+        <div class="tag-list">${niceTags}</div>
+      </div>
+      <div class="result-block">
+        <h3>💡 CV Improvements</h3>
+        <div class="suggestion-list">${suggestions}</div>
+      </div>
+    </div>
+  `;
+
+  // ── COVER LETTER ──
+  document.getElementById("coverCard").innerHTML = `
+    <div class="card-title">Suggested Cover Letter Opening</div>
+    <div class="cover-box" id="coverText">${escapeHtml(r.cover_letter_opening)}
+<button class="copy-btn" onclick="copyCover()">Copy</button></div>
+  `;
+
+  results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function escapeHtml(str) {
+  return (str || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function copyCover() {
+  const text = document.getElementById("coverText").innerText.replace("Copy","").trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector(".copy-btn");
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = "Copy", 2000);
+  });
+}
+</script>
+</body>
+</html>
